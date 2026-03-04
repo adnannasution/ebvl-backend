@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 API_KEY        = os.environ.get("API_KEY", "sk-70303af38b561de6712b6f2f91f6a755e5bc388a7d8ab262")
 BASE_URL       = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
 FONNTE_TOKEN   = os.environ.get("FONNTE_TOKEN", "AkRPLwk1PmsrDvjXYf37")
-SIMILARITY_THR = float(os.environ.get("SIMILARITY_THR", "0.30"))
+SIMILARITY_THR = float(os.environ.get("SIMILARITY_THR", "0.50"))
 
 # Kata kunci yang LLM kembalikan jika tidak ada jawaban di referensi
 NO_ANSWER_SIGNAL = "TIDAK_ADA_JAWABAN"
