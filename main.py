@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 # ─── Config ───────────────────────────────────────────────────────────────────
 API_KEY         = os.environ.get("API_KEY", "sk-70303af38b561de6712b6f2f91f6a755e5bc388a7d8ab262")
 BASE_URL        = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
-FONNTE_TOKEN    = os.environ.get("FONNTE_TOKEN", "")        # token dari fonnte.com
+FONNTE_TOKEN    = os.environ.get("AkRPLwk1PmsrDvjXYf37", "")        # token dari fonnte.com
 SIMILARITY_THR  = float(os.environ.get("SIMILARITY_THR", "0.30"))
 
 # ─── Load embeddings sekali saat startup ──────────────────────────────────────
@@ -118,7 +118,7 @@ async def send_whatsapp(target: str, message: str) -> None:
         )
 
 # ─── RAG core ─────────────────────────────────────────────────────────────────
-async def process_rag(question: str) -> str:
+async def process_rag(question: str) -> str | None:
     if is_greeting(question):
         return await ask_llm(question, "")
 
@@ -127,7 +127,7 @@ async def process_rag(question: str) -> str:
     best_score = top_chunks[0]["score"] if top_chunks else 0
 
     if best_score < SIMILARITY_THR:
-        return "Maaf, pertanyaan Anda di luar cakupan informasi EBVL yang saya miliki. Silakan ajukan pertanyaan seputar sistem EBVL."
+        return None  # tidak balas sama sekali
 
     context = "\n\n".join(
         c["text"] for c in top_chunks if c["score"] >= SIMILARITY_THR
@@ -156,6 +156,10 @@ async def webhook(request: Request):
     print(f"📩 [{sender}]: {message}")
 
     answer = await process_rag(message)
+
+    if answer is None:
+        print(f"⏭️ No answer for [{sender}], skipping reply")
+        return JSONResponse({"status": "skipped"})
 
     await send_whatsapp(sender, answer)
     print(f"✅ Replied to {sender}")
