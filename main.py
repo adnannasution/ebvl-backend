@@ -9,12 +9,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-API_KEY         = os.environ.get("API_KEY", "sk-70303af38b561de6712b6f2f91f6a755e5bc388a7d8ab262")
-BASE_URL        = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
-FONNTE_TOKEN = os.environ.get("FONNTE_TOKEN", "AkRPLwk1PmsrDvjXYf37")
-SIMILARITY_THR  = float(os.environ.get("SIMILARITY_THR", "0.30"))
+API_KEY        = os.environ.get("API_KEY", "sk-70303af38b561de6712b6f2f91f6a755e5bc388a7d8ab262")
+BASE_URL       = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
+FONNTE_TOKEN   = os.environ.get("FONNTE_TOKEN", "AkRPLwk1PmsrDvjXYf37")
+SIMILARITY_THR = float(os.environ.get("SIMILARITY_THR", "0.30"))
 
-
+# Kata kunci yang LLM kembalikan jika tidak ada jawaban di referensi
+NO_ANSWER_SIGNAL = "TIDAK_ADA_JAWABAN"
 
 # ─── Load embeddings sekali saat startup ──────────────────────────────────────
 EMBEDDINGS: list[dict] = json.loads(Path("ebvl_embeddings.json").read_text())
@@ -60,7 +61,7 @@ def retrieve_top_k(question_embedding: list[float], k: int = 3) -> list[dict]:
     return scored[:k]
 
 # ─── Call LLM ─────────────────────────────────────────────────────────────────
-async def ask_llm(question: str, context: str) -> str:
+async def ask_llm(question: str, context: str) -> str | None:
     system_prompt = f"""Anda adalah admin resmi dan berpengetahuan penuh tentang sistem EBVL.
 
 PERSONA:
@@ -72,7 +73,6 @@ CARA MENJAWAB SAPAAN:
 - Perkenalkan diri sebagai admin dan tawarkan bantuan.
 - Tidak perlu kaku — boleh santai dan bersahabat.
 
-
 LARANGAN KERAS:
 - JANGAN pernah bertanya balik kepada pengguna.
 - JANGAN menyebut frasa seperti: "berdasarkan context", "menurut informasi yang diberikan", "sesuai data yang ada", "berdasarkan dokumen", atau ungkapan serupa.
@@ -82,14 +82,17 @@ LARANGAN KERAS:
 - JANGAN gunakan simbol * atau ** untuk bold — tulis teks biasa saja.
 - JANGAN gunakan kalimat pembuka seperti "Halo!", "Terima kasih telah menghubungi", "Saya bantu jelaskan ya", atau sejenisnya — langsung jawab.
 - JANGAN tambahkan kalimat penutup seperti "Semoga membantu", "Jangan ragu menghubungi kami", "Silakan tanya lagi", atau sejenisnya — cukup jawab lalu selesai.
-- JANGAN balas jika pengguna mengajak diskusi, pertemuan, atau ketemuan langsung — abaikan saja.
-
+- JANGAN balas jika pengguna mengajak diskusi, pertemuan, atau ketemuan langsung — balas dengan {NO_ANSWER_SIGNAL}.
 
 JIKA PERTANYAAN TERLALU SINGKAT ATAU TIDAK JELAS:
 - Langsung jawab dengan informasi yang paling relevan tentang topik tersebut.
 
-JIKA PERTANYAAN DI LUAR TOPIK EBVL:
-- Jawab: "Maaf, saya hanya dapat membantu seputar sistem EBVL."
+JIKA PENGGUNA MEMINTA PANDUAN, MANUAL, ATAU BUKU PETUNJUK EBVL:
+- Jawab: "Berikut saya lampirkan manual book EBVL: https://drive.google.com/file/d/1XM5vFMZFh4PtmXFgif-BGfOb0Af3KfTm/view?usp=sharing"
+
+JIKA JAWABAN TIDAK TERDAPAT DALAM REFERENSI YANG DIBERIKAN:
+- Balas hanya dengan kata: {NO_ANSWER_SIGNAL}
+- JANGAN mengarang atau menebak jawaban apapun.
 
 GAYA BAHASA:
 - Bahasa Indonesia yang sopan, ramah, lugas, dan mudah dipahami.
@@ -110,7 +113,13 @@ GAYA BAHASA:
                 ],
             },
         )
-        return resp.json()["choices"][0]["message"]["content"]
+        answer = resp.json()["choices"][0]["message"]["content"].strip()
+
+        # Jika LLM mengembalikan signal tidak ada jawaban, return None
+        if NO_ANSWER_SIGNAL in answer:
+            return None
+
+        return answer
 
 # ─── Send WhatsApp via Fonnte ─────────────────────────────────────────────────
 async def send_whatsapp(target: str, message: str) -> None:
@@ -136,6 +145,10 @@ async def process_rag(question: str) -> str | None:
     context = "\n\n".join(
         c["text"] for c in top_chunks if c["score"] >= SIMILARITY_THR
     )
+
+    if not context:
+        return None  # tidak balas jika tidak ada referensi
+
     return await ask_llm(question, context)
 
 # ─── Webhook endpoint (Fonnte kirim ke sini) ──────────────────────────────────
@@ -146,7 +159,6 @@ async def webhook(request: Request):
     except Exception:
         body = dict(await request.form())
 
-    # Fonnte webhook format
     sender  = body.get("sender") or body.get("from", "")
     message = body.get("message") or body.get("text", "")
 
