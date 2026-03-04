@@ -96,7 +96,7 @@ JIKA JAWABAN TIDAK TERDAPAT DALAM REFERENSI YANG DIBERIKAN:
 
 GAYA BAHASA:
 - Bahasa Indonesia yang sopan, ramah, lugas, dan mudah dipahami.
-- Langsung ke inti jawaban, tanpa basa-basi atau kalimat pembuka yang tidak perlu. Panjang jawaban menyesuaikan kompleksitas pertanyaan.
+- singkat saja, Langsung ke inti jawaban, tanpa basa-basi atau kalimat pembuka yang tidak perlu.
 - Jawaban untuk WhatsApp: gunakan format teks biasa, JANGAN gunakan markdown seperti ** atau ##.
 
 {f"Pengetahuan Anda tentang EBVL:{chr(10)}{context}" if context else ""}"""
