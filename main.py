@@ -106,7 +106,9 @@ GAYA BAHASA:
             f"{BASE_URL}/chat/completions",
             headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
             json={
-                "model": "gpt-4o",
+                "model": "claude-haiku-4-5",
+                "temperature": 0.1,
+                "max_tokens": 512,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user",   "content": question},
