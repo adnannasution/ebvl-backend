@@ -177,8 +177,9 @@ async def webhook(request: Request):
           # TAMBAH INI SEMENTARA UNTUK DEBUG
     print("BODY LENGKAP:", body)       # ← tambah di sini
 
-    sender  = body.get("sender") or body.get("from", "")
-    message = body.get("message") or body.get("text", "")
+# SESUDAH
+sender  = body.get("pengirim") or body.get("sender") or body.get("from", "")
+message = body.get("pesan") or body.get("message") or body.get("text", "")
 
     if not sender or not message:
         return JSONResponse({"status": "ignored"})
