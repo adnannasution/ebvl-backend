@@ -174,6 +174,9 @@ async def webhook(request: Request):
     except Exception:
         body = dict(await request.form())
 
+          # TAMBAH INI SEMENTARA UNTUK DEBUG
+    print("BODY LENGKAP:", body)       # ← tambah di sini
+
     sender  = body.get("sender") or body.get("from", "")
     message = body.get("message") or body.get("text", "")
 
