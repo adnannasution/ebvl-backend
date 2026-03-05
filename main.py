@@ -14,6 +14,10 @@ BASE_URL       = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
 FONNTE_TOKEN   = os.environ.get("FONNTE_TOKEN", "AkRPLwk1PmsrDvjXYf37")
 SIMILARITY_THR = float(os.environ.get("SIMILARITY_THR", "0.50"))
 
+# Nomor admin yang akan menerima notifikasi jika bot tidak bisa menjawab
+# Format: kode negara + nomor, tanpa + (contoh: 6281234567890)
+ADMIN_NUMBER   = os.environ.get("ADMIN_NUMBER", "6285261781320")
+
 # Kata kunci yang LLM kembalikan jika tidak ada jawaban di referensi
 NO_ANSWER_SIGNAL = "TIDAK_ADA_JAWABAN"
 
@@ -117,7 +121,6 @@ GAYA BAHASA:
         )
         answer = resp.json()["choices"][0]["message"]["content"].strip()
 
-        # Jika LLM mengembalikan signal tidak ada jawaban, return None
         if NO_ANSWER_SIGNAL in answer:
             return None
 
@@ -132,6 +135,16 @@ async def send_whatsapp(target: str, message: str) -> None:
             data={"target": target, "message": message},
         )
 
+# ─── Notifikasi ke admin jika bot skip ────────────────────────────────────────
+async def notify_admin(sender: str, message: str) -> None:
+    notif = (
+        f"⚠️ Pesan belum terjawab oleh bot\n"
+        f"Dari: {sender}\n"
+        f"Pesan: {message}\n\n"
+        f"Silakan balas manual."
+    )
+    await send_whatsapp(ADMIN_NUMBER, notif)
+
 # ─── RAG core ─────────────────────────────────────────────────────────────────
 async def process_rag(question: str) -> str | None:
     if is_greeting(question):
@@ -142,14 +155,14 @@ async def process_rag(question: str) -> str | None:
     best_score = top_chunks[0]["score"] if top_chunks else 0
 
     if best_score < SIMILARITY_THR:
-        return None  # tidak balas sama sekali
+        return None
 
     context = "\n\n".join(
         c["text"] for c in top_chunks if c["score"] >= SIMILARITY_THR
     )
 
     if not context:
-        return None  # tidak balas jika tidak ada referensi
+        return None
 
     return await ask_llm(question, context)
 
@@ -171,12 +184,17 @@ async def webhook(request: Request):
     if body.get("device") and sender == body.get("device"):
         return JSONResponse({"status": "self"})
 
+    # Abaikan pesan dari admin (agar tidak loop notifikasi)
+    if sender == ADMIN_NUMBER:
+        return JSONResponse({"status": "admin"})
+
     print(f"📩 [{sender}]: {message}")
 
     answer = await process_rag(message)
 
     if answer is None:
-        print(f"⏭️ No answer for [{sender}], skipping reply")
+        print(f"⏭️ No answer for [{sender}], notifying admin...")
+        await notify_admin(sender, message)
         return JSONResponse({"status": "skipped"})
 
     await send_whatsapp(sender, answer)
