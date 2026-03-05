@@ -187,17 +187,17 @@ async def webhook(request: Request):
         return JSONResponse({"status": "self"})
 
     # Abaikan pesan dari admin (agar tidak loop notifikasi)
-    if sender == ADMIN_NUMBER:
-        return JSONResponse({"status": "admin"})
+    # if sender == ADMIN_NUMBER:
+    #     return JSONResponse({"status": "admin"})
 
     print(f"📩 [{sender}]: {message}")
 
     answer = await process_rag(message)
 
-    if answer is None:
-        print(f"⏭️ No answer for [{sender}], notifying admin...")
-        await notify_admin(sender, message)
-        return JSONResponse({"status": "skipped"})
+    # if answer is None:
+    #     print(f"⏭️ No answer for [{sender}], notifying admin...")
+    #     await notify_admin(sender, message)
+    #     return JSONResponse({"status": "skipped"})
 
     await send_whatsapp(sender, answer)
     print(f"✅ Replied to {sender}")
