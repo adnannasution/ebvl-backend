@@ -94,7 +94,6 @@ JIKA PERTANYAAN TERLALU SINGKAT ATAU TIDAK JELAS:
 JIKA PENGGUNA MEMINTA PANDUAN, MANUAL, ATAU BUKU PETUNJUK EBVL:
 - Jawab: "Berikut saya lampirkan manual book EBVL: https://drive.google.com/file/d/1XM5vFMZFh4PtmXFgif-BGfOb0Af3KfTm/view?usp=sharing"
 
-
 JIKA JAWABAN TIDAK TERDAPAT DALAM REFERENSI YANG DIBERIKAN:
 - Balas HANYA dengan kata: {NO_ANSWER_SIGNAL}
 - DILARANG memberikan saran alternatif apapun.
@@ -104,7 +103,7 @@ JIKA JAWABAN TIDAK TERDAPAT DALAM REFERENSI YANG DIBERIKAN:
 
 GAYA BAHASA:
 - Bahasa Indonesia yang sopan, ramah, lugas, dan mudah dipahami.
-- singkat saja, Langsung ke inti jawaban, tanpa basa-basi atau kalimat pembuka yang tidak perlu.
+- Singkat saja, langsung ke inti jawaban, tanpa basa-basi atau kalimat pembuka yang tidak perlu.
 - Jawaban untuk WhatsApp: gunakan format teks biasa, JANGAN gunakan markdown seperti ** atau ##.
 
 {f"Pengetahuan Anda tentang EBVL:{chr(10)}{context}" if context else ""}"""
@@ -190,18 +189,13 @@ async def webhook(request: Request):
     if body.get("device") and sender == body.get("device"):
         return JSONResponse({"status": "self"})
 
-    # Abaikan pesan dari admin (agar tidak loop notifikasi)
-    # if sender == ADMIN_NUMBER:
-    #     return JSONResponse({"status": "admin"})
-
     print(f"📩 [{sender}]: {message}")
 
     answer = await process_rag(message)
 
-    # if answer is None:
-    #     print(f"⏭️ No answer for [{sender}], notifying admin...")
-    #     await notify_admin(sender, message)
-    #     return JSONResponse({"status": "skipped"})
+    if answer is None:
+        print(f"⏭️ No answer for [{sender}], skipping...")
+        return JSONResponse({"status": "skipped"})
 
     await send_whatsapp(sender, answer)
     print(f"✅ Replied to {sender}")
