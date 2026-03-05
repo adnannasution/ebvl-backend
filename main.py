@@ -174,12 +174,10 @@ async def webhook(request: Request):
     except Exception:
         body = dict(await request.form())
 
-          # TAMBAH INI SEMENTARA UNTUK DEBUG
-    print("BODY LENGKAP:", body)       # ← tambah di sini
+    print("BODY LENGKAP:", body)
 
-# SESUDAH
-sender  = body.get("pengirim") or body.get("sender") or body.get("from", "")
-message = body.get("pesan") or body.get("message") or body.get("text", "")
+    sender  = body.get("pengirim") or body.get("sender") or body.get("from", "")
+    message = body.get("pesan") or body.get("message") or body.get("text", "")
 
     if not sender or not message:
         return JSONResponse({"status": "ignored"})
