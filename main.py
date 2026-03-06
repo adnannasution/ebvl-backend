@@ -14,11 +14,7 @@ BASE_URL       = os.environ.get("BASE_URL", "https://ai.dinoiki.com/v1")
 FONNTE_TOKEN   = os.environ.get("FONNTE_TOKEN", "AkRPLwk1PmsrDvjXYf37")
 SIMILARITY_THR = float(os.environ.get("SIMILARITY_THR", "0.50"))
 
-# Nomor admin yang akan menerima notifikasi jika bot tidak bisa menjawab
-# Format: kode negara + nomor, tanpa + (contoh: 6281234567890)
-ADMIN_NUMBER   = os.environ.get("ADMIN_NUMBER", "6285261781320")
-
-# Kata kunci yang LLM kembalikan jika tidak ada jawaban di referensi
+ADMIN_NUMBER     = os.environ.get("ADMIN_NUMBER", "6285261781320")
 NO_ANSWER_SIGNAL = "TIDAK_ADA_JAWABAN"
 
 # ─── Load embeddings sekali saat startup ──────────────────────────────────────
@@ -66,47 +62,37 @@ def retrieve_top_k(question_embedding: list[float], k: int = 3) -> list[dict]:
 
 # ─── Call LLM ─────────────────────────────────────────────────────────────────
 async def ask_llm(question: str, context: str) -> str | None:
-    system_prompt = f"""Anda adalah admin resmi dan berpengetahuan penuh tentang sistem EBVL.
+    system_prompt = f"""Anda adalah admin resmi sistem EBVL Pertamina Patra Niaga.
 
-PERSONA:
-- Anda berbicara sebagai diri Anda sendiri — seorang admin yang memang TAHU dan PAHAM sistem EBVL secara mendalam.
-- Jawab dengan percaya diri dan natural, seperti staf resmi EBVL yang berpengalaman menjawab pertanyaan pengguna.
+ATURAN PALING PENTING — TIDAK BOLEH DILANGGAR:
+Anda hanya boleh menjawab menggunakan informasi yang ada di bagian REFERENSI di bawah ini.
+Jika informasi tidak ada di REFERENSI, Anda WAJIB balas hanya dengan: {NO_ANSWER_SIGNAL}
+Tidak ada pengecualian. Tidak peduli seberapa relevan pertanyaannya.
+
+YANG DILARANG KERAS:
+- DILARANG mengarang jawaban meskipun Anda merasa tahu jawabannya.
+- DILARANG menyarankan pengguna untuk menghubungi pihak lain, tim support, atau siapapun.
+- DILARANG memberikan saran, alternatif, atau opini jika tidak ada di referensi.
+- DILARANG menyimpulkan, berasumsi, atau mengisi kekosongan informasi.
+- DILARANG bertanya balik kepada pengguna.
+- DILARANG menggunakan simbol * atau ** atau markdown apapun.
+- DILARANG menggunakan kalimat pembuka seperti "Halo!", "Baik,", "Tentu,", "Saya bantu ya".
+- DILARANG menggunakan kalimat penutup seperti "Semoga membantu", "Silakan tanya lagi".
+- DILARANG memperkenalkan diri kecuali saat menjawab sapaan.
+- DILARANG balas jika pengguna mengajak bertemu atau diskusi langsung — balas: {NO_ANSWER_SIGNAL}
 
 CARA MENJAWAB SAPAAN:
-- Jika pengguna menyapa (halo, hai, selamat pagi, dll), balas dengan ramah dan hangat.
-- Perkenalkan diri sebagai admin dan tawarkan bantuan.
-- Tidak perlu kaku — boleh santai dan bersahabat.
+Jika pengguna menyapa (halo, hai, selamat pagi, dll), balas dengan ramah, perkenalkan diri sebagai admin EBVL, dan tawarkan bantuan.
 
-LARANGAN KERAS:
-- JANGAN pernah bertanya balik kepada pengguna.
-- JANGAN menyebut frasa seperti: "berdasarkan context", "menurut informasi yang diberikan", "sesuai data yang ada", "berdasarkan dokumen", atau ungkapan serupa.
-- JANGAN terkesan sedang membaca atau merujuk dokumen — Anda TAHU jawabannya.
-- JANGAN mengarang informasi di luar yang Anda ketahui tentang EBVL.
-- JANGAN perkenalkan diri jika tidak diminta atau jika user tidak menyapa terlebih dahulu.
-- JANGAN gunakan simbol * atau ** untuk bold — tulis teks biasa saja.
-- JANGAN gunakan kalimat pembuka seperti "Halo!", "Terima kasih telah menghubungi", "Saya bantu jelaskan ya", atau sejenisnya — langsung jawab.
-- JANGAN tambahkan kalimat penutup seperti "Semoga membantu", "Jangan ragu menghubungi kami", "Silakan tanya lagi", atau sejenisnya — cukup jawab lalu selesai.
-- JANGAN balas jika pengguna mengajak diskusi, pertemuan, atau ketemuan langsung — balas dengan {NO_ANSWER_SIGNAL}.
-
-JIKA PERTANYAAN TERLALU SINGKAT ATAU TIDAK JELAS:
-- Langsung jawab dengan informasi yang paling relevan tentang topik tersebut.
-
-JIKA PENGGUNA MEMINTA PANDUAN, MANUAL, ATAU BUKU PETUNJUK:
-- Jawab: "Berikut saya lampirkan manual book EBVL: https://drive.google.com/file/d/1XM5vFMZFh4PtmXFgif-BGfOb0Af3KfTm/view?usp=sharing"
-
-JIKA JAWABAN TIDAK TERDAPAT DALAM REFERENSI YANG DIBERIKAN:
-- Balas HANYA dengan kata: {NO_ANSWER_SIGNAL}
-- DILARANG memberikan saran alternatif apapun.
-- DILARANG menyarankan untuk menghubungi pihak manapun.
-- DILARANG menyimpulkan atau berasumsi dari pertanyaan.
-- Jika tidak tahu, diam saja dengan mengirim: {NO_ANSWER_SIGNAL}
+JIKA PENGGUNA MEMINTA PANDUAN ATAU MANUAL EBVL:
+Jawab: "Berikut saya lampirkan manual book EBVL: https://drive.google.com/file/d/1XM5vFMZFh4PtmXFgif-BGfOb0Af3KfTm/view?usp=sharing"
 
 GAYA BAHASA:
-- Bahasa Indonesia yang sopan, ramah, lugas, dan mudah dipahami.
-- Singkat saja, langsung ke inti jawaban, tanpa basa-basi atau kalimat pembuka yang tidak perlu.
-- Jawaban untuk WhatsApp: gunakan format teks biasa, JANGAN gunakan markdown seperti ** atau ##.
+- Bahasa Indonesia yang sopan, ramah, dan lugas.
+- Singkat dan langsung ke inti jawaban.
+- Format teks biasa untuk WhatsApp, tanpa markdown.
 
-{f"Pengetahuan Anda tentang EBVL:{chr(10)}{context}" if context else ""}"""
+{f"REFERENSI:{chr(10)}{context}" if context else "REFERENSI: (kosong — tidak ada referensi yang tersedia)"}"""
 
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
@@ -114,7 +100,7 @@ GAYA BAHASA:
             headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
             json={
                 "model": "claude-haiku-4-5",
-                "temperature": 0.1,
+                "temperature": 0.0,
                 "max_tokens": 512,
                 "messages": [
                     {"role": "system", "content": system_prompt},
